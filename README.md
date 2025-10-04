@@ -61,10 +61,9 @@ Se definen permisos granulares según tipo de flujo:
  - Microservicios → service.*
  - Usuarios → user.*
 
-## **Paso 5:** Flujo Client Credentials
+### **Paso 5:** Flujo Client Credentials
 
 Este flujo permite que un microservicio cliente obtenga un access_token directamente desde Auth0 sin credenciales de usuario.
-
 **Archivo:** flujo_Client_Credentials.py
 
 **Proceso:**
@@ -77,7 +76,7 @@ Este flujo permite que un microservicio cliente obtenga un access_token directam
   *Authorization: Bearer <access_token>*
 4. La API valida el token usando la librería JWT de Auth0 y, si es válido, responde con los datos solicitados.
 
-### **Paso 5:** Flujo Authorization Code con Refresh Token
+### **Paso 6:** Flujo Authorization Code con Refresh Token
 
 Este flujo se utiliza para usuarios finales (frontend o Postman).
 
@@ -91,7 +90,7 @@ Este flujo se utiliza para usuarios finales (frontend o Postman).
   *refresh_token=<token_anterior>*
 5. Auth0 responde con un nuevo access_token, manteniendo la sesión sin reautenticación.
 
-## **Paso 6:** Validación del Token en la API Protegida
+### **Paso 7:** Validación del Token en la API Protegida
 
 **Archivo:** api/server.js
 
@@ -103,21 +102,21 @@ El servidor Express valida los tokens recibidos en cada request:
     res.json({ message: 'Acceso autorizado al recurso protegido.' });
   });*
 
-## **Paso 7:** Seguridad y HTTPS
+### **Paso 8:** Seguridad y HTTPS
 
 - Todo el tráfico entre cliente, Auth0 y API debe realizarse sobre HTTPS.
 - Los client_secret se manejan únicamente del lado del servidor.
 - Los tokens se transmiten exclusivamente por el encabezado Authorization.
 - El servidor implementa CORS seguro y cabeceras de protección (helmet).
 
-## **Paso 8:** Pruebas (Postman)
+### **Paso 9:** Pruebas (Postman)
 
 
-## **Paso 9:** Resultados Esperados
+### **Paso 10:** Resultados Esperados
 
 * Client Credentials: el microservicio obtiene y usa correctamente un access_token.
 * Refresh Token: el usuario renueva su sesión sin autenticarse de nuevo.
 * API Protegida: responde solo ante tokens válidos emitidos por Auth0.
 
-## **Paso 10:** Conclusiones
+### **Paso 11:** Conclusiones
 
