@@ -109,14 +109,14 @@ El servidor Express valida los tokens recibidos en cada request:
 - Los tokens se transmiten exclusivamente por el encabezado Authorization.
 - El servidor implementa CORS seguro y cabeceras de protección (helmet).
 
-### **Paso 9:** Pruebas (Postman)
+## 5. Pruebas (Postman)
 
 
-### **Paso 10:** Resultados Esperados
+## 6. Resultados Esperados
 
 * Client Credentials: el microservicio obtiene y usa correctamente un access_token.
 * Refresh Token: el usuario renueva su sesión sin autenticarse de nuevo.
 * API Protegida: responde solo ante tokens válidos emitidos por Auth0.
 
-### **Paso 11:** Conclusiones
+## 7. Conclusiones
 
