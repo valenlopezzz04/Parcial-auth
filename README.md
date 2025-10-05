@@ -4,26 +4,31 @@ Integrantes del grupo: Laura Camila Rodriguez León, Mariana Valle Moreno, Valen
 
 ## 1. Introducción
 
-El presente trabajo implementa un sistema de autenticación y autorización basado en el estándar OAuth 2.0, utilizando Auth0 como el **Authorization Server**.  
-Se desarrolaron dos flujos principales:
+El presente trabajo implementa un sistema de autenticación y autorización basado en el estándar OAuth 2.0, utilizando Auth0 como Authorization Server y Node.js con Express.js como entorno de desarrollo para el Resource Server (API protegida).
 
-- **Client Credentials Grant**: el cual fue empleado para la comunicación entre microservicios.
-- **Authorization Code con Refresh Token**: utilizado por aplicaciones cliente que representan los usuarios finales.
+En la implementación se desarrollaron dos flujos principales del protocolo:
 
-El propósito esperado es lograr garantizar el acceso seguro a una API protegida, permitiendo así la validación de tokens y la renovación de sesiones sin reautenticación, según las buenas prácticas de seguridad y a los lineamientos del protocolo OAuth 2.0.
+- Client Credentials Grant: empleado para la comunicación entre microservicios o clientes de servidor a servidor.
+
+- Authorization Code con **Refresh Token**: destinado a la autenticación y autorización de usuarios finales, permitiendo mantener sesiones activas sin reautenticación manual.
+
+El propósito es garantizar el acceso seguro a los recursos de una API protegida mediante la validación de tokens emitidos por Auth0, asegurando el cumplimiento de buenas prácticas en materia de seguridad, gestión de identidad y control de acceso.
 
 ---
 
 ## 2. Objetivos
 
-- Implementar los flujos Client Credentials y Authorization con Refresh Token en un entorno funcional.
-- Configurar un Authorization Server (Auth0) que gestione la emisión y validación de tokens.
-- Proteger un API REST en Express.js que valide los `access_token` antes de autorizar el acceso.
-- Demostrar mediante Postman el funcionamiento de los flujos y la protección del API.
+- Implementar los flujos Client Credentials y Authorization Code con Refresh Token en un entorno funcional y seguro.
+- Configurar un servidor de autorización (Auth0) que emita, valide y renueve tokens de acceso.
+- Proteger una API REST desarrollada en Express.js mediante verificación de tokens JWT.
+- Validar el funcionamiento completo de los flujos y la protección del API mediante pruebas en Postman.
+- Aplicar principios de separación de responsabilidades y seguridad arquitectónica en la comunicación entre servicios.
 
 ---
 
 ## 3. Arquitectura del Sistema
+
+La siguiente arquitectura se basa en el patrón Authorization Server + Resource Server, separando completamente las responsabilidades de autenticación (Auth0) y autorización de recursos (Express.js).
 
 ```mermaid
 flowchart LR
@@ -38,85 +43,136 @@ flowchart LR
 
 ## 4. Configuración del Authorization Server (Auth0)
 
-### **Paso 1:** Creación de Tenant en Auth0
+### **Paso 1:** Creación del Tenant
+Se configuró un tenant en Auth0 bajo dominio seguro HTTPS.  
+Se habilitaron los flujos *Client Credentials* y *Authorization Code* con soporte para *Refresh Tokens*.
 
-- Se configuró un nuevo tenant con dominios HTTPS.
-- Se habilitaron los flujos Client Credentials y Authorization Code + Refresh Token.
+### **Paso 2:** Aplicaciones Registradas
+- **Machine-to-Machine Application:** destinada al flujo *Client Credentials*, utilizada por microservicios o scripts automatizados.  
+  - Scopes: `service.read`, `service.write`.  
+- **Regular Web Application:** diseñada para usuarios finales en el flujo *Authorization Code + Refresh Token*.  
+  - Scopes: `user.read`, `user.write`.
 
-###**Paso 2:** Aplicaciones Registradas
+### **Paso 3:** Definición de la API
+Se registró una API protegida con el **identifier** `https://parcial-api`, configurada para emitir tokens JWT firmados con el algoritmo **RS256**.
 
-Machine-to-Machine Application: usada por el cliente Python para el flujo Client Credentials.
- - Scopes: service.read, service.write.
-SPA / Web Application: usada para el flujo de usuario final con Refresh Token.
- - Scopes: user.read, user.write.
+### **Paso 4:** Scopes y Roles
+Los permisos se definieron por tipo de cliente:
+- Microservicios → `service.read` y `service.write`.  
+- Usuarios finales → `user.read` y `user.write`.
 
-### **Paso 3:** Definición de APIs
-
-Se registra una API protegida en Auth0 (audience).
-El API usa JWTs emitidos por Auth0 y firmados con algoritmo RS256.
-
-### **Paso 4:** Configuración de Scopes y Roles
-
-Se definen permisos granulares según tipo de flujo:
- - Microservicios → service.*
- - Usuarios → user.*
+Estos scopes fueron utilizados en la validación de las rutas protegidas dentro del API Express.
 
 ### **Paso 5:** Flujo Client Credentials
-
-Este flujo permite que un microservicio cliente obtenga un access_token directamente desde Auth0 sin credenciales de usuario.
-**Archivo:** flujo_Client_Credentials.py
+**Propósito:** permitir que un microservicio obtenga un `access_token` sin credenciales de usuario.  
+**Archivo:** `flujo_Client_Credentials.py`
 
 **Proceso:**
-1. El cliente envía una solicitud POST al endpoint /oauth/token de Auth0 con:
-- grant_type=client_credentials
-- client_id y client_secret
-. audience del API
-2. Auth0 responde con un access_token (JWT) con tiempo de expiración limitado.
-3. El cliente usa el token en el encabezado para consumir el API protegido en server.js.:
-  *Authorization: Bearer <access_token>*
-4. La API valida el token usando la librería JWT de Auth0 y, si es válido, responde con los datos solicitados.
+1. El cliente realiza una solicitud `POST` al endpoint `/oauth/token` de Auth0 con los parámetros:
+   - `grant_type=client_credentials`  
+   - `client_id` y `client_secret`  
+   - `audience=https://parcial-api`  
+2. Auth0 responde con un `access_token` (JWT) de validez limitada.  
+3. El microservicio incluye el token en las peticiones al servidor Express mediante:  
+   `Authorization: Bearer <access_token>`  
+4. El servidor valida el token y, de ser válido, devuelve los datos protegidos.
 
 ### **Paso 6:** Flujo Authorization Code con Refresh Token
-
-Este flujo se utiliza para usuarios finales (frontend o Postman).
+**Propósito:** permitir autenticación de usuarios y renovación de sesión.
 
 **Proceso:**
+1. El usuario accede a la URL de autorización e inicia sesión mediante Auth0.  
+2. Auth0 devuelve un `authorization_code`.  
+3. El cliente intercambia el código por un `access_token` y un `refresh_token`.  
+4. El usuario accede a la API protegida con el `access_token`.  
+5. Al expirar, el `refresh_token` permite obtener un nuevo `access_token` sin requerir login nuevamente.
 
-1. El usuario inicia sesión en Auth0 y autoriza la aplicación.
-2. Auth0 emite un access_token y un refresh_token.
-3. El cliente usa el access_token para acceder al API.
-4. Cuando el token expira, el cliente solicita uno nuevo enviando:\
-  *grant_type=refresh_token* \
-  *refresh_token=<token_anterior>*
-5. Auth0 responde con un nuevo access_token, manteniendo la sesión sin reautenticación.
+---
 
-### **Paso 7:** Validación del Token en la API Protegida
+## 5. Validación en la API Protegida (Express.js)
 
-**Archivo:** api/server.js
+**Archivo:** `api/server.js`
 
-El servidor Express valida los tokens recibidos en cada request:
+El servidor Express implementa middlewares de Auth0 para validar los tokens:
+
 1. Usa middleware de Auth0 (express-jwt o jsonwebtoken) para verificar firma y audiencia.
 2. Solo las peticiones con un token válido pueden acceder a los endpoints.
 3. Si el token es inválido o ha expirado, responde con código 401 Unauthorized.
-  *app.get('/data', checkJwt, (req, res) => {
-    res.json({ message: 'Acceso autorizado al recurso protegido.' });
-  });*
 
-### **Paso 8:** Seguridad y HTTPS
+```js
+const checkJwt = jwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksUri: `https://authparcial.us.auth0.com/.well-known/jwks.json`
+  }),
+  audience: "https://parcial-api",
+  issuer: "https://authparcial.us.auth0.com/",
+  algorithms: ["RS256"]
+});
+```
 
-- Todo el tráfico entre cliente, Auth0 y API debe realizarse sobre HTTPS.
-- Los client_secret se manejan únicamente del lado del servidor.
-- Los tokens se transmiten exclusivamente por el encabezado Authorization.
-- El servidor implementa CORS seguro y cabeceras de protección (helmet).
+Cada endpoint protegido exige un scope o permiso específico:
+
+app.get("/user", checkJwt, checkScopes("user.read"), (req, res) => {
+  res.json({ msg: "Accediste con user.read" });
+});
+
+app.post("/user", checkJwt, checkScopes("user.write"), (req, res) => {
+  res.json({ msg: "Accediste con user.write" });
+});
+
+
+Solo las peticiones con un token válido pueden acceder a estos endpoints, mientras que las solicitudes no autorizadas reciben una respuesta 403 Insufficient scope
 
 ## 5. Pruebas (Postman)
+
+- Generación de tokens
+BODY:\
+<img width="440" height="139" alt="image" src="https://github.com/user-attachments/assets/bb4aa46b-b2e2-4ea9-8972-091650142bcc" />
+
+Resultado obtenido:
+<img width="1079" height="245" alt="image" src="https://github.com/user-attachments/assets/3ca53598-9b96-4213-b254-a1f2991c2441" />
+
+- Regeneración de tokens después de su expiración:
+URL UTILIZADA: *https://authparcial.us.auth0.com/authorize?response_type=code&client_id=Xw0nloJVNlxac6eBNnlLnPiFJEg2pA7Y&redirect_uri=http://localhost:3000/callback&scope=openid profile email user.read user.write offline_access&audience=https://parcial-api*
+
+BODY: \
+<img width="727" height="152" alt="image" src="https://github.com/user-attachments/assets/8bc62e0f-5884-4cc2-8cda-eafcc7dff8ec" />
+
+Resultado obtenido:
+<img width="1091" height="419" alt="image" src="https://github.com/user-attachments/assets/ae44f185-5a5a-4b34-b38d-1047d2ff1beb" />
+
+- Verificación de la seguridad: Utilizando el token generado para los scopes user.read y user.write.
+<img width="478" height="161" alt="image" src="https://github.com/user-attachments/assets/12ce069c-0a9b-467d-ad75-302486385bcf" />
+
+- Uso de user.read:
+<img width="736" height="352" alt="image" src="https://github.com/user-attachments/assets/1da9d9a8-92a4-48fd-8ba0-5a686cccba54" />
+
+- Uso de GET /service con el token correcto:
+<img width="690" height="386" alt="image" src="https://github.com/user-attachments/assets/426481a6-580e-463e-aacd-07786d49c783" />
+
+
+
 
 
 ## 6. Resultados Esperados
 
-* Client Credentials: el microservicio obtiene y usa correctamente un access_token.
-* Refresh Token: el usuario renueva su sesión sin autenticarse de nuevo.
-* API Protegida: responde solo ante tokens válidos emitidos por Auth0.
+| Flujo | Descripción | Resultado |
+|-------|--------------|-----------|
+| **Client Credentials** | Permite que un microservicio obtenga un `access_token` directamente desde Auth0 sin intervención de usuario, garantizando comunicación segura entre servicios. | Logrado |
+| **Authorization Code + Refresh Token** | Facilita la autenticación de usuarios finales y la renovación automática del `access_token` mediante el uso del `refresh_token`, evitando el reingreso de credenciales. | Logrado |
+| **API Protegida (Express.js)** | Valida la firma, audiencia y scopes de los tokens emitidos por Auth0, respondiendo únicamente a peticiones autenticadas y autorizadas. | Logrado |
+
 
 ## 7. Conclusiones
 
+- Separación de responsabilidades: La arquitectura distingue de forma clara entre autenticación (Auth0) y autorización (API Express), reduciendo la complejidad y mejorando la seguridad.
+
+- Cumplimiento de buenas prácticas: Los flujos implementados siguen las recomendaciones oficiales del estándar OAuth 2.0, asegurando protección ante accesos no autorizados.
+
+- Escalabilidad y extensibilidad: El uso de Auth0 permite gestionar usuarios, roles y permisos de forma centralizada, facilitando la ampliación del sistema a futuros servicios.
+
+- Gestión segura de tokens: Se garantiza la validez temporal de los access_token y la renovación automática mediante refresh_token, optimizando la experiencia de usuario.
+
+- Aplicabilidad arquitectónica: El proyecto ejemplifica un patrón Authorization Server + Resource Server, ampliamente utilizado en arquitecturas orientadas a servicios y microservicios modernos.
