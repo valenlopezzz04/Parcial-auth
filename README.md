@@ -2,6 +2,8 @@
 Asignatura: Patrones Arquitectonicos. \
 Integrantes del grupo: Laura Camila Rodriguez León, Mariana Valle Moreno, Valentina Alejandra Lopez Romero.
 
+Link del video: https://www.youtube.com/watch?v=8S75WjPlvZo
+
 ## 1. Introducción
 
 El presente trabajo implementa un sistema de autenticación y autorización basado en el estándar OAuth 2.0, utilizando Auth0 como Authorization Server y Node.js con Express.js como entorno de desarrollo para el Resource Server (API protegida).
